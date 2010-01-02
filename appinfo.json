@@ -1,0 +1,15 @@
+{
+       "title": "Quake",
+       "id": "org.webosinternals.sdlquake",
+       "version": "1.0.9",
+       "release_date": "2-Jan-2010",
+       "vendor": "WebOS Internals",
+       "vendor_email": "support@webos-internals.org",
+       "vendor_url": "http://www.webos-internals.org/wiki/Application:Quake",
+       "type": "web",
+       "main": "index.html",
+       "icon": "icon.png",
+       "removable": "true",
+       "noWindow": true,
+       "noDeprecatedStyles": true
+}
