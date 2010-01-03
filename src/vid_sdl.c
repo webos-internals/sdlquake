@@ -8,11 +8,11 @@ viddef_t    vid;                // global video state
 unsigned short  d_8to16table[256];
 
 // The original defaults
-//#define    BASEWIDTH    320
-//#define    BASEHEIGHT   200
+#define    BASEWIDTH    320
+#define    BASEHEIGHT   200
 // Much better for high resolution displays
-#define    BASEWIDTH    (320*2)
-#define    BASEHEIGHT   (200*2)
+//#define    BASEWIDTH    (320*2)
+//#define    BASEHEIGHT   (200*2)
 
 int    VGA_width, VGA_height, VGA_rowbytes, VGA_bufferrowbytes = 0;
 byte    *VGA_pagebase;
@@ -56,7 +56,7 @@ void    VID_Init (unsigned char *palette)
     Uint32 flags;
 
     // Load the SDL library
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_CDROM) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0)
         Sys_Error("VID: Couldn't load SDL: %s", SDL_GetError());
 
     // Set up display mode (width and height)
@@ -203,6 +203,7 @@ void Sys_SendKeyEvents(void)
                 sym = event.key.keysym.sym;
                 state = event.key.state;
                 modstate = SDL_GetModState();
+                printf( "%d, %d\n", sym, SDLK_BACKQUOTE );
                 switch(sym)
                 {
                    case SDLK_DELETE: sym = K_DEL; break;
@@ -287,20 +288,16 @@ void Sys_SendKeyEvents(void)
                 // If we're not directly handled and still above 255
                 // just force it to 0
                 if(sym > 255) sym = 0;
+                if ( sym == 37 ) sym = 96;
                 Key_Event(sym, state);
                 break;
 
             case SDL_MOUSEMOTION:
-                if ( (event.motion.x != (vid.width/2)) ||
-                     (event.motion.y != (vid.height/2)) ) {
-                    mouse_x = event.motion.xrel*10;
-                    mouse_y = event.motion.yrel*10;
-                    if ( (event.motion.x < ((vid.width/2)-(vid.width/4))) ||
-                         (event.motion.x > ((vid.width/2)+(vid.width/4))) ||
-                         (event.motion.y < ((vid.height/2)-(vid.height/4))) ||
-                         (event.motion.y > ((vid.height/2)+(vid.height/4))) ) {
-                        SDL_WarpMouse(vid.width/2, vid.height/2);
-                    }
+                if ( (event.motion.x < ((vid.width/2)-(vid.width/4))) ||
+                        (event.motion.x > ((vid.width/2)+(vid.width/4))) ||
+                        (event.motion.y < ((vid.height/2)-(vid.height/4))) ||
+                        (event.motion.y > ((vid.height/2)+(vid.height/4))) ) {
+                    SDL_WarpMouse(vid.width/2, vid.height/2);
                 }
                 break;
 
@@ -312,6 +309,7 @@ void Sys_SendKeyEvents(void)
             default:
                 break;
         }
+
     }
 }
 
