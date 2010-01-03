@@ -8,11 +8,10 @@ viddef_t    vid;                // global video state
 unsigned short  d_8to16table[256];
 
 // The original defaults
-#define    BASEWIDTH    320
-#define    BASEHEIGHT   200
-// Much better for high resolution displays
-//#define    BASEWIDTH    (320*2)
-//#define    BASEHEIGHT   (200*2)
+#define    BASEWIDTH    480
+#define    BASEHEIGHT   320
+
+#define    FIREZONE_SIZE 80
 
 int    VGA_width, VGA_height, VGA_rowbytes, VGA_bufferrowbytes = 0;
 byte    *VGA_pagebase;
@@ -203,7 +202,6 @@ void Sys_SendKeyEvents(void)
                 sym = event.key.keysym.sym;
                 state = event.key.state;
                 modstate = SDL_GetModState();
-                printf( "%d, %d\n", sym, SDLK_BACKQUOTE );
                 switch(sym)
                 {
                    case SDLK_DELETE: sym = K_DEL; break;
@@ -288,17 +286,62 @@ void Sys_SendKeyEvents(void)
                 // If we're not directly handled and still above 255
                 // just force it to 0
                 if(sym > 255) sym = 0;
-                if ( sym == 37 ) sym = 96;
+
+                //XXX: This is a terrible hack
+                // because for some reason
+                // parsing configs doesn't work?
+
+                //sym+i is tilde
+                if ( sym == 37 ) sym = SDLK_BACKQUOTE;
+
+                //these values are from keys.h
+                if ( sym == SDLK_j ) sym = 128;//forward
+                if ( sym == SDLK_h ) sym = 44;//strafeleft
+                if ( sym == SDLK_b ) sym = 129;//back
+                if ( sym == SDLK_n ) sym = 46;//straferight
+
+                //remap the numbers  to the weapons, so no orange needed
+                if ( sym == SDLK_e ) sym = SDLK_1;
+                if ( sym == SDLK_r ) sym = SDLK_2;
+                if ( sym == SDLK_t ) sym = SDLK_3;
+                if ( sym == SDLK_d ) sym = SDLK_4;
+                if ( sym == SDLK_f ) sym = SDLK_5;
+                if ( sym == SDLK_g ) sym = SDLK_6;
+                if ( sym == SDLK_x ) sym = SDLK_7;
+                if ( sym == SDLK_c ) sym = SDLK_8;
+                if ( sym == SDLK_v ) sym = SDLK_9;
+
+                //XXX: Weapon cycling!
+                ////gesture down
+                //if ( sym == 27 )
+
+                ////gesture up
+                //if ( sym == 229 )
+
+                //gesture button
+                if ( sym == 231 ) sym = 32;//jump (space bar)
+
                 Key_Event(sym, state);
                 break;
 
             case SDL_MOUSEMOTION:
-                if ( (event.motion.x < ((vid.width/2)-(vid.width/4))) ||
-                        (event.motion.x > ((vid.width/2)+(vid.width/4))) ||
-                        (event.motion.y < ((vid.height/2)-(vid.height/4))) ||
-                        (event.motion.y > ((vid.height/2)+(vid.height/4))) ) {
-                    SDL_WarpMouse(vid.width/2, vid.height/2);
+                //printf( "MOUSE: %d, %d\n", event.motion.xrel, event.motion.yrel );
+
+                if ( event.motion.y > vid.height - FIREZONE_SIZE )
+                {
+                    //FIRE!
+                    Key_Event (K_MOUSE1, true);
+                    Key_Event (K_MOUSE1, false);
                 }
+                else
+                {
+                    if (event.motion.xrel < 60 && event.motion.xrel > -60 && event.motion.yrel < 60 && event.motion.yrel > -60) {
+                        mouse_x = event.motion.xrel*10;
+                        //Mouse y--moves forward/back not look
+                        //mouse_y = event.motion.yrel*10;
+                    }
+                }
+
                 break;
 
             case SDL_QUIT:
@@ -338,7 +381,7 @@ void IN_Commands (void)
     mouse_buttonstate = (i & ~0x06) | ((i & 0x02)<<1) | ((i & 0x04)>>1);
     for (i=0 ; i<3 ; i++) {
         if ( (mouse_buttonstate & (1<<i)) && !(mouse_oldbuttonstate & (1<<i)) )
-            Key_Event (K_MOUSE1 + i, true);
+            //Key_Event (K_MOUSE1 + i, true);
 
         if ( !(mouse_buttonstate & (1<<i)) && (mouse_oldbuttonstate & (1<<i)) )
             Key_Event (K_MOUSE1 + i, false);
