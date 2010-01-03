@@ -12,6 +12,7 @@ unsigned short  d_8to16table[256];
 #define    BASEHEIGHT   320
 
 #define    FIREZONE_SIZE 80
+#define    JUMP_SIZE 100
 
 int    VGA_width, VGA_height, VGA_rowbytes, VGA_bufferrowbytes = 0;
 byte    *VGA_pagebase;
@@ -300,6 +301,29 @@ void Sys_SendKeyEvents(void)
                 if ( sym == SDLK_b ) sym = 129;//back
                 if ( sym == SDLK_n ) sym = 46;//straferight
 
+                //same, only sprint versions
+                if ( sym == SDLK_i ) 
+                {
+                    Key_Event( 134, state );
+                    Key_Event( 128, state );
+                    Key_Event( 134, state );
+                    sym = 0;
+                }
+                if ( sym == SDLK_u ) 
+                {
+                    Key_Event( 134, state );
+                    Key_Event( 44, state );
+                    Key_Event( 134, state );
+                    sym = 0;
+                }
+                if ( sym == SDLK_k ) 
+                {
+                    Key_Event( 134, state );
+                    Key_Event( 46, state );
+                    Key_Event( 134, state );
+                    sym = 0;
+                }
+
                 //remap the numbers  to the weapons, so no orange needed
                 if ( sym == SDLK_e ) sym = SDLK_1;
                 if ( sym == SDLK_r ) sym = SDLK_2;
@@ -319,7 +343,7 @@ void Sys_SendKeyEvents(void)
                 //if ( sym == 229 )
 
                 //gesture button
-                if ( sym == 231 ) sym = 32;//jump (space bar)
+                //if ( sym == 231 ) sym = 
 
                 Key_Event(sym, state);
                 break;
@@ -333,12 +357,23 @@ void Sys_SendKeyEvents(void)
                     Key_Event (K_MOUSE1, true);
                     Key_Event (K_MOUSE1, false);
                 }
+                else if ( event.motion.x < JUMP_SIZE && event.motion.y < JUMP_SIZE )
+                {
+                    //top-left corner, jump!
+                    Key_Event( 32, true );
+                    Key_Event( 32, false );
+                }
                 else
                 {
                     if (event.motion.xrel < 60 && event.motion.xrel > -60 && event.motion.yrel < 60 && event.motion.yrel > -60) {
-                        mouse_x = event.motion.xrel*10;
+                        mouse_x = event.motion.xrel*15;
+
                         //Mouse y--moves forward/back not look
-                        //mouse_y = event.motion.yrel*10;
+                        //cl.viewangles[PITCH] += m_pitch.value * event.motion.yrel * 10;
+                        //if (cl.viewangles[PITCH] > 80)
+                        //    cl.viewangles[PITCH] = 80;
+                        //if (cl.viewangles[PITCH] < -70)
+                        //    cl.viewangles[PITCH] = -70;
                     }
                 }
 
