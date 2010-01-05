@@ -622,8 +622,8 @@ void Key_Event (int key, qboolean down)
 			return;	// ignore most autorepeats
 		}
 			
-		if (key >= 200 && !keybindings[key])
-			Con_Printf ("%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
+	//	if (key >= 200 && !keybindings[key])
+	//		Con_Printf ("%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
 	}
 
 	if (key == K_SHIFT)

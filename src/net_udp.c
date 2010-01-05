@@ -62,6 +62,8 @@ int UDP_Init (void)
 	
 	if (COM_CheckParm ("-noudp"))
 		return -1;
+    //Disable net
+    return -1;
 
 	// determine my name & address
 	gethostname(buff, MAXHOSTNAMELEN);

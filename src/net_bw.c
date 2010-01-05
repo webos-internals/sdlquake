@@ -316,6 +316,8 @@ int BW_Init(void)
 
 	if (COM_CheckParm ("-noudp"))
 		return -1;
+    //Disable net
+    return -1;
 
 	lowmem_buffer = dos_getmemory(LOWMEM_SIZE);
 	if (!lowmem_buffer)

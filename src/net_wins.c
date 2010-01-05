@@ -162,6 +162,8 @@ int WINS_Init (void)
 
 	if (COM_CheckParm ("-noudp"))
 		return -1;
+    //Disable net
+    return -1;
 
 	if (winsock_initialized == 0)
 	{

@@ -11,8 +11,18 @@ unsigned short  d_8to16table[256];
 #define    BASEWIDTH    480
 #define    BASEHEIGHT   320
 
-#define    FIREZONE_SIZE 80
-#define    JUMP_SIZE 100
+#define    FIRE_SIZE    160
+#define    JUMP_SIZE    120
+#define    JOY_SIZE     160
+#define    JOY_DEAD     10
+#define    JOY_X        80
+#define    JOY_Y        80
+
+byte    autofire = 0;
+byte    mousedown = 0;
+byte    normalkeyboard = 0;
+byte    gesturedown = 0;
+extern int in_impulse;
 
 int    VGA_width, VGA_height, VGA_rowbytes, VGA_bufferrowbytes = 0;
 byte    *VGA_pagebase;
@@ -21,6 +31,7 @@ static SDL_Surface *screen = NULL;
 
 static qboolean mouse_avail;
 static float   mouse_x, mouse_y;
+static float   joy_x, joy_y;
 static int mouse_oldbuttonstate = 0;
 
 // No support for option menus
@@ -119,6 +130,11 @@ void    VID_Shutdown (void)
     SDL_Quit();
 }
 
+void drawUIOverlay()
+{
+    //XXX: draw overlay here as appropriate
+}
+
 void    VID_Update (vrect_t *rects)
 {
     SDL_Rect *sdlrects;
@@ -144,6 +160,9 @@ void    VID_Update (vrect_t *rects)
         sdlrects[i].h = rect->height;
         ++i;
     }
+
+    drawUIOverlay();
+
     SDL_UpdateRects(screen, n, sdlrects);
 }
 
@@ -178,6 +197,9 @@ void D_EndDirectRect (int x, int y, int width, int height)
 {
     if (!screen) return;
     if (x < 0) x = screen->w+x-1;
+
+    drawUIOverlay();
+
     SDL_UpdateRect(screen, x, y, width, height);
 }
 
@@ -295,87 +317,176 @@ void Sys_SendKeyEvents(void)
                 //sym+i is tilde
                 if ( sym == 37 ) sym = SDLK_BACKQUOTE;
 
-                //these values are from keys.h
-                if ( sym == SDLK_j ) sym = 128;//forward
-                if ( sym == SDLK_h ) sym = 44;//strafeleft
-                if ( sym == SDLK_b ) sym = 129;//back
-                if ( sym == SDLK_n ) sym = 46;//straferight
-
-                //same, only sprint versions
-                if ( sym == SDLK_i ) 
+                if ( !normalkeyboard )
                 {
-                    Key_Event( 134, state );
-                    Key_Event( 128, state );
-                    Key_Event( 134, state );
-                    sym = 0;
+                    //these values are from keys.h
+                    if ( sym == SDLK_j ) sym = K_CTRL;//fire!
+                    if ( sym == SDLK_b ) sym = K_SPACE;//jump!
+                    //if ( sym == SDLK_j ) sym = K_UPARROW;//forward!
+                    //if ( sym == SDLK_b ) sym = K_DOWNARROW;//back
+                    if ( sym == SDLK_h ) sym = 44;//strafeleft
+                    if ( sym == SDLK_n ) sym = 46;//straferight
+
+                    //same, only sprint versions
+                    if ( sym == SDLK_i ) 
+                    {
+                        Key_Event( K_SHIFT, state );
+                        Key_Event( K_UPARROW, state );
+                        Key_Event( K_SHIFT, state );
+                        sym = 0;
+                    }
+                    if ( sym == SDLK_u ) 
+                    {
+                        Key_Event( K_SHIFT, state );
+                        Key_Event( 44, state );
+                        Key_Event( K_SHIFT, state );
+                        sym = 0;
+                    }
+                    if ( sym == SDLK_k ) 
+                    {
+                        Key_Event( K_SHIFT, state );
+                        Key_Event( 46, state );
+                        Key_Event( K_SHIFT, state );
+                        sym = 0;
+                    }
+
+                    //remap the numbers  to the weapons, so no orange needed
+                    if ( sym == SDLK_e ) sym = SDLK_1;
+                    if ( sym == SDLK_r ) sym = SDLK_2;
+                    if ( sym == SDLK_t ) sym = SDLK_3;
+                    if ( sym == SDLK_d ) sym = SDLK_4;
+                    if ( sym == SDLK_f ) sym = SDLK_5;
+                    if ( sym == SDLK_g ) sym = SDLK_6;
+                    if ( sym == SDLK_x ) sym = SDLK_7;
+                    if ( sym == SDLK_c ) sym = SDLK_8;
+                    if ( sym == SDLK_v ) sym = SDLK_9;
+
+                    //quick load/quick save
+                    if ( sym == SDLK_QUOTE ) sym = K_F9;//load
+                    if ( sym == SDLK_UNDERSCORE ) sym = K_F6;//save
+
+                    //menu
+                    if ( sym == SDLK_q ) sym = K_ESCAPE;
+
+                    //arrow keys for menu nav
+                    if ( sym == SDLK_w ) sym = K_LEFTARROW;
+                    if ( sym == SDLK_s ) sym = K_UPARROW;
+                    if ( sym == SDLK_z ) sym = K_RIGHTARROW;
+                    if ( sym == SDLK_a ) sym = K_DOWNARROW;
                 }
-                if ( sym == SDLK_u ) 
+
+                //Weapon cycling!
+
+                //gesture down
+                //here we use the full name since in normal keyboard mode
+                //we bind 'q' to escape, same as swipe down
+                if ( event.key.keysym.sym == 27 && state )
                 {
-                    Key_Event( 134, state );
-                    Key_Event( 44, state );
-                    Key_Event( 134, state );
-                    sym = 0;
+                    in_impulse = 10;
+                    break;
                 }
-                if ( sym == SDLK_k ) 
+
+                //gesture up
+                if ( sym == 229 && state )
                 {
-                    Key_Event( 134, state );
-                    Key_Event( 46, state );
-                    Key_Event( 134, state );
-                    sym = 0;
+                    in_impulse = 12;
+                    break;
                 }
-
-                //remap the numbers  to the weapons, so no orange needed
-                if ( sym == SDLK_e ) sym = SDLK_1;
-                if ( sym == SDLK_r ) sym = SDLK_2;
-                if ( sym == SDLK_t ) sym = SDLK_3;
-                if ( sym == SDLK_d ) sym = SDLK_4;
-                if ( sym == SDLK_f ) sym = SDLK_5;
-                if ( sym == SDLK_g ) sym = SDLK_6;
-                if ( sym == SDLK_x ) sym = SDLK_7;
-                if ( sym == SDLK_c ) sym = SDLK_8;
-                if ( sym == SDLK_v ) sym = SDLK_9;
-
-                //XXX: Weapon cycling!
-                ////gesture down
-                //if ( sym == 27 )
-
-                ////gesture up
-                //if ( sym == 229 )
 
                 //gesture button
-                //if ( sym == 231 ) sym = 
+                if ( sym == 231 )
+                {
+                    gesturedown = state;
+                }
+
+                if ( sym == SDLK_AT && state )
+                {
+                    normalkeyboard = !normalkeyboard;
+                    if ( normalkeyboard )
+                    {
+                        Con_Printf( "Normal keyboard enabled. Press '@' to toggle back.\n" );
+                    }
+                    else
+                    {
+                        Con_Printf( "Action keyboard enabled. Press '@' to toggle back.\n" );
+                    }
+                }
 
                 Key_Event(sym, state);
                 break;
 
+            case SDL_MOUSEBUTTONDOWN:
+            case SDL_MOUSEBUTTONUP:
+                
+                if ( event.motion.x > vid.width - FIRE_SIZE &&
+                        event.motion.y > vid.height - FIRE_SIZE )
+                {
+                    //FIRE!
+                    Key_Event( K_MOUSE1, event.button.state );
+                    autofire = event.button.state;
+                    break;
+                }
+                break;
             case SDL_MOUSEMOTION:
                 //printf( "MOUSE: %d, %d\n", event.motion.xrel, event.motion.yrel );
 
-                if ( event.motion.y > vid.height - FIREZONE_SIZE )
+                if ( mousedown && 
+                        event.motion.y > vid.height - JOY_SIZE &&
+                        event.motion.x < JOY_SIZE )
                 {
-                    //FIRE!
-                    Key_Event (K_MOUSE1, true);
-                    Key_Event (K_MOUSE1, false);
+                    joy_x = ( event.motion.x - JOY_X );
+                    if ( joy_x < JOY_DEAD && joy_x > -JOY_DEAD )
+                    {
+                        joy_x = 0;
+                    }
+                    else
+                    {
+                        if ( joy_x >= JOY_DEAD )
+                        {
+                            joy_x -= JOY_DEAD;
+                        }
+                        else
+                        {
+                            joy_x += JOY_DEAD;
+                        }
+                    }
+
+                    joy_x *= 3;
+
+                    //printf( "%f, %f, %f\n", vid.height, event.motion.y, JOY_SIZE );
+                    joy_y = -( (float)vid.height - event.motion.y - JOY_Y )*2;
+                    break;
                 }
-                else if ( event.motion.x < JUMP_SIZE && event.motion.y < JUMP_SIZE )
+
+                if ( !mousedown )
+                {
+                    joy_x = 0;
+                    joy_y = 0;
+                }
+
+                //jump: top
+                if ( event.motion.y < JUMP_SIZE )
                 {
                     //top-left corner, jump!
                     Key_Event( 32, true );
                     Key_Event( 32, false );
+                    break;
                 }
-                else
-                {
-                    if (event.motion.xrel < 60 && event.motion.xrel > -60 && event.motion.yrel < 60 && event.motion.yrel > -60) {
-                        mouse_x = event.motion.xrel*15;
 
-                        //Mouse y--moves forward/back not look
-                        //cl.viewangles[PITCH] += m_pitch.value * event.motion.yrel * 10;
-                        //if (cl.viewangles[PITCH] > 80)
-                        //    cl.viewangles[PITCH] = 80;
-                        //if (cl.viewangles[PITCH] < -70)
-                        //    cl.viewangles[PITCH] = -70;
-                    }
-                }
+                //wasn't a special area, do mouse-look
+
+                //threshold sudden movements, and only use relative movement while finger down
+                //if ( mousedown &&
+                //        event.motion.xrel < 100 && event.motion.xrel > -100 && event.motion.yrel < 100 && event.motion.yrel > -100 ) {
+                //    mouse_x = event.motion.xrel*20;
+
+                //    //Mouse y--moves forward/back not look
+                //    //cl.viewangles[PITCH] += m_pitch.value * event.motion.yrel * 10;
+                //    //if (cl.viewangles[PITCH] > 80)
+                //    //    cl.viewangles[PITCH] = 80;
+                //    //if (cl.viewangles[PITCH] < -70)
+                //    //    cl.viewangles[PITCH] = -70;
+                //}
 
                 break;
 
@@ -396,6 +507,7 @@ void IN_Init (void)
     if ( COM_CheckParm ("-nomouse") )
         return;
     mouse_x = mouse_y = 0.0;
+    joy_x = joy_y = 0.0;
     mouse_avail = 1;
 }
 
@@ -408,50 +520,64 @@ void IN_Commands (void)
 {
     int i;
     int mouse_buttonstate;
-   
+
     if (!mouse_avail) return;
-   
+
     i = SDL_GetMouseState(NULL, NULL);
     /* Quake swaps the second and third buttons */
     mouse_buttonstate = (i & ~0x06) | ((i & 0x02)<<1) | ((i & 0x04)>>1);
-    for (i=0 ; i<3 ; i++) {
-        if ( (mouse_buttonstate & (1<<i)) && !(mouse_oldbuttonstate & (1<<i)) )
-            //Key_Event (K_MOUSE1 + i, true);
-
-        if ( !(mouse_buttonstate & (1<<i)) && (mouse_oldbuttonstate & (1<<i)) )
-            Key_Event (K_MOUSE1 + i, false);
+    mousedown = mouse_buttonstate & 1;
+    if ( !mousedown && autofire )
+    {
+        autofire = false;
     }
-    mouse_oldbuttonstate = mouse_buttonstate;
+
+    Key_Event( K_MOUSE1, autofire );
+    //for (i=0 ; i<3 ; i++) {
+    //    if ( (mouse_buttonstate & (1<<i)) && !(mouse_oldbuttonstate & (1<<i)) )
+    //        Key_Event (K_MOUSE1 + i, true);
+
+    //    if ( !(mouse_buttonstate & (1<<i)) && (mouse_oldbuttonstate & (1<<i)) )
+    //        Key_Event (K_MOUSE1 + i, false);
+    //}
+    //mouse_oldbuttonstate = mouse_buttonstate;
 }
 
 void IN_Move (usercmd_t *cmd)
 {
     if (!mouse_avail)
         return;
+
+    mouse_x = joy_x * sensitivity.value;
+    mouse_y = joy_y * sensitivity.value;
    
-    mouse_x *= sensitivity.value;
-    mouse_y *= sensitivity.value;
-   
-    if ( (in_strafe.state & 1) || (lookstrafe.value && (in_mlook.state & 1) ))
+    //if ( (in_strafe.state & 1) || (lookstrafe.value && (in_mlook.state & 1) ))
+    if( gesturedown )
         cmd->sidemove += m_side.value * mouse_x;
     else
         cl.viewangles[YAW] -= m_yaw.value * mouse_x;
     if (in_mlook.state & 1)
         V_StopPitchDrift ();
    
-    if ( (in_mlook.state & 1) && !(in_strafe.state & 1)) {
-        cl.viewangles[PITCH] += m_pitch.value * mouse_y;
-        if (cl.viewangles[PITCH] > 80)
-            cl.viewangles[PITCH] = 80;
-        if (cl.viewangles[PITCH] < -70)
-            cl.viewangles[PITCH] = -70;
-    } else {
-        if ((in_strafe.state & 1) && noclip_anglehack)
-            cmd->upmove -= m_forward.value * mouse_y;
-        else
-            cmd->forwardmove -= m_forward.value * mouse_y;
-    }
+    cmd->forwardmove -= m_forward.value * mouse_y;
+    //if ( (in_mlook.state & 1) && !(in_strafe.state & 1)) {
+    //    cl.viewangles[PITCH] += m_pitch.value * mouse_y;
+    //    if (cl.viewangles[PITCH] > 80)
+    //        cl.viewangles[PITCH] = 80;
+    //    if (cl.viewangles[PITCH] < -70)
+    //        cl.viewangles[PITCH] = -70;
+    //} else {
+    //    if ((in_strafe.state & 1) && noclip_anglehack)
+    //        cmd->upmove -= m_forward.value * mouse_y;
+    //    else
+    //        cmd->forwardmove -= m_forward.value * mouse_y;
+    //}
     mouse_x = mouse_y = 0.0;
+
+    if ( !mousedown )
+    {
+        joy_x = joy_y = 0.0;
+    }
 }
 
 /*

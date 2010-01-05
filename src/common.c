@@ -1543,7 +1543,7 @@ byte *COM_LoadFile (char *path, int usehunk)
 {
 	int             h;
 	byte    *buf;
-	char    base[32];
+	char    base[200];
 	int             len;
 
 	buf = NULL;     // quiet compiler warning
@@ -1579,10 +1579,10 @@ byte *COM_LoadFile (char *path, int usehunk)
 		
 	((byte *)buf)[len] = 0;
 
-	Draw_BeginDisc ();
+	//Draw_BeginDisc ();
 	Sys_FileRead (h, buf, len);                     
 	COM_CloseFile (h);
-	Draw_EndDisc ();
+	//Draw_EndDisc ();
 
 	return buf;
 }
