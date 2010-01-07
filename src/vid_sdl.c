@@ -16,7 +16,15 @@ unsigned short  d_8to16table[256];
 #define    JOY_SIZE     160
 #define    JOY_DEAD     10
 #define    JOY_X        80
-#define    JOY_Y        80
+#define    JOY_Y        ( (float)vid.height - 80.0f )
+
+#define    JOY_IMAGE_FILENAME        "images/joystick.png"
+#define    JOY_PRESS_IMAGE_FILENAME  "images/joystick-press.png"
+#define    JOY_CENTER_IMAGE_FILENAME "images/joystick-center.png"
+#define    JUMP_IMAGE_FILENAME       "images/jump.png"
+#define    FIRE_IMAGE_FILENAME       "images/joystick-center.png" //"fire.png"
+
+#define    OVERLAY_ITEM_COUNT   5
 
 byte    autofire = 0;
 byte    mousedown = 0;
@@ -24,19 +32,35 @@ byte    normalkeyboard = 0;
 byte    gesturedown = 0;
 extern int in_impulse;
 
+//Hacky way to show the 'jumping' overlay item
+int     jumping_counter = 0;
+#define JUMP_FRAME_COUNT 6
+
 int    VGA_width, VGA_height, VGA_rowbytes, VGA_bufferrowbytes = 0;
 byte    *VGA_pagebase;
 
+static SDL_Surface *buffer = NULL;
 static SDL_Surface *screen = NULL;
 
 static qboolean mouse_avail;
 static float   mouse_x, mouse_y;
 static float   joy_x, joy_y;
-static int mouse_oldbuttonstate = 0;
 
 // No support for option menus
 void (*vid_menudrawfn)(void) = NULL;
 void (*vid_menukeyfn)(int key) = NULL;
+
+// I don't have the header for this...
+SDL_Surface * IMG_Load( char * filename );
+
+static SDL_Surface * joy_img = NULL;
+static SDL_Surface * joy_press_img = NULL;
+static SDL_Surface * joy_center_img = NULL;
+static SDL_Surface * jump_img = NULL;
+static SDL_Surface * fire_img = NULL;
+
+static SDL_Rect old_rects[OVERLAY_ITEM_COUNT];
+
 
 void    VID_SetPalette (unsigned char *palette)
 {
@@ -50,11 +74,31 @@ void    VID_SetPalette (unsigned char *palette)
         colors[i].b = *palette++;
     }
     SDL_SetColors(screen, colors, 0, 256);
+    SDL_SetColors(buffer, colors, 0, 256);
 }
 
 void    VID_ShiftPalette (unsigned char *palette)
 {
     VID_SetPalette(palette);
+}
+
+SDL_Surface * LoadImage( char * image )
+{
+    SDL_Surface * img = IMG_Load( image );
+    if ( !img )
+    {
+        Sys_Error( "Error loading image %s: %s\n", image, SDL_GetError() );
+    }
+    SDL_Surface * imgWithAlpha = SDL_DisplayFormatAlpha( img );
+    SDL_FreeSurface( img );
+    if ( !imgWithAlpha )
+    {
+        Sys_Error( "Error converting to format alpha: %s\n", SDL_GetError() );
+    }
+
+    //SDL_SetAlpha( img, 0, 0 );
+
+    return imgWithAlpha;
 }
 
 void    VID_Init (unsigned char *palette)
@@ -94,6 +138,20 @@ void    VID_Init (unsigned char *palette)
     // Initialize display 
     if (!(screen = SDL_SetVideoMode(vid.width, vid.height, 8, flags)))
         Sys_Error("VID: Couldn't set video mode: %s\n", SDL_GetError());
+
+    //create buffer where we do the rendering
+    buffer = SDL_CreateRGBSurface(SDL_SWSURFACE,
+            screen->w,
+            screen->h,
+            screen->format->BitsPerPixel,
+            screen->format->Rmask,
+            screen->format->Gmask,
+            screen->format->Bmask,
+            screen->format->Amask);
+    if ( !buffer )
+    {
+        Sys_Error( "VID: Couldn't create buffer: %s\n", SDL_GetError() );
+    }
     VID_SetPalette(palette);
     SDL_WM_SetCaption("sdlquake","sdlquake");
     // now know everything we need to know about the buffer
@@ -103,8 +161,8 @@ void    VID_Init (unsigned char *palette)
     vid.numpages = 1;
     vid.colormap = host_colormap;
     vid.fullbright = 256 - LittleLong (*((int *)vid.colormap + 2048));
-    VGA_pagebase = vid.buffer = screen->pixels;
-    VGA_rowbytes = vid.rowbytes = screen->pitch;
+    VGA_pagebase = vid.buffer = buffer->pixels;
+    VGA_rowbytes = vid.rowbytes = buffer->pitch;
     vid.conbuffer = vid.buffer;
     vid.conrowbytes = vid.rowbytes;
     vid.direct = 0;
@@ -124,6 +182,14 @@ void    VID_Init (unsigned char *palette)
 
     // initialize the mouse
     SDL_ShowCursor(0);
+
+    // Load the overlay images
+    joy_img = LoadImage( JOY_IMAGE_FILENAME );
+    joy_press_img = LoadImage( JOY_PRESS_IMAGE_FILENAME );
+    joy_center_img = LoadImage( JOY_CENTER_IMAGE_FILENAME );
+    jump_img = LoadImage( JUMP_IMAGE_FILENAME );
+    fire_img = LoadImage( FIRE_IMAGE_FILENAME );
+    memset( old_rects, 0, sizeof( old_rects ) );
 }
 
 void    VID_Shutdown (void)
@@ -131,26 +197,108 @@ void    VID_Shutdown (void)
     SDL_Quit();
 }
 
-void D_DrawUIOverlay()
+
+/* ===========================================================================
+ * D_DrawOverlayBacking
+ *   
+ *  Description:  Draws where overlay used to be (making sure it's gone) as well
+ *                as where it will be in preparation for the overlay being drawn
+ * =========================================================================*/
+void D_DrawOverlayBacking( SDL_Rect rects[OVERLAY_ITEM_COUNT] )
 {
-    //XXX: draw overlay here as appropriate
-
-    int overlay_x = 0;
-    int overlay_y = 160;
-    int i;
-
-    Uint8 *row = screen->pixels + overlay_y*screen->pitch + overlay_x;
-    Uint8 *offset;
-    for ( i = 0; i < 159; i++ )
+    int i = 0;
+    for ( ; i < OVERLAY_ITEM_COUNT; i++ )
     {
-        for ( offset = row; offset < row + 160; offset+=2 )
-        {
-            *offset = 0;
-        }
-        row += screen->pitch;
+        SDL_Rect *r_old = &old_rects[i];
+        SDL_Rect *r_new = &rects[i];
+
+        SDL_BlitSurface( buffer, r_old, screen, r_old );
+        SDL_BlitSurface( buffer, r_new, screen, r_new );
     }
 
-    //SDL_UpdateRect(screen, overlay_x, overlay_y, 160, 160);
+    memcpy( old_rects, rects, sizeof( old_rects ) );
+}
+
+void D_DrawUIOverlay()
+{
+    // Render the overlay!
+    // This is done in two stages:
+    // Calculate the rects where everything goes,
+    // and then the actual drawing
+    SDL_Rect rect[OVERLAY_ITEM_COUNT];
+    SDL_Rect emptyrect;
+    int i;
+    memset( rect, 0, sizeof( rect ) );
+
+
+    //always draw the joystick location indicator
+    rect[0].x = JOY_X - joy_img->w/2;
+    rect[0].y = JOY_Y - joy_img->h/2;
+    rect[0].w = joy_img->w;
+    rect[0].h = joy_img->h;
+
+    //Now draw the center of the joystick
+    rect[1].x = JOY_X - joy_center_img->w/2;
+    rect[1].y = JOY_Y - joy_center_img->h/2;
+    rect[1].w = joy_center_img->w;
+    rect[1].h = joy_center_img->h;
+
+    //If user has moved the joystick...
+    rect[2].x = JOY_X + joy_x - joy_press_img->w/2;
+    rect[2].y = JOY_Y + joy_y - joy_press_img->h/2;
+    rect[2].w = joy_press_img->w;
+    rect[2].h = joy_press_img->h;
+
+    //Adjust x/y so the full image is on the screen
+    int max_x = vid.width - joy_press_img->w -1;
+    int max_y = vid.height - joy_press_img->h -1;
+
+    if ( rect[2].x > max_x )
+    {
+        rect[2].x = max_x;
+    }
+    if ( rect[2].y > max_y )
+    {
+        rect[2].y = max_y;
+    }
+
+
+    //Draw the jump button if the user hit it
+    rect[3].x = vid.width/2 - jump_img->w/2;
+    rect[3].y = 10;
+    rect[3].w = jump_img->w;
+    rect[3].h = jump_img->h;
+
+    //Draw the fire button if the user is hitting it
+    rect[4].x = vid.width - FIRE_SIZE/2 - fire_img->w/2;
+    rect[4].y = vid.height - FIRE_SIZE/2 - fire_img->h/2;
+    rect[4].w = fire_img->w;
+    rect[4].h = fire_img->h;
+
+    //Now render the overlay
+
+    //First make sure we a)get rid of the old overlay on the screen buffer
+    //and b)the pieces we're drawing on top of are up-to-date
+    D_DrawOverlayBacking( rect );
+
+    SDL_BlitSurface( joy_img, NULL, screen, &rect[0] );
+
+    if ( joy_x != 0 || joy_y != 0 )
+    {
+        SDL_BlitSurface( joy_center_img, NULL, screen, &rect[1] );
+        SDL_BlitSurface( joy_press_img, NULL, screen, &rect[2] );
+    }
+
+    if ( jumping_counter > 0 )
+    {
+        jumping_counter--;
+        SDL_BlitSurface( jump_img, NULL, screen, &rect[3] );
+    }
+
+    if ( autofire )
+    {
+        SDL_BlitSurface( fire_img, NULL, screen, &rect[4] );
+    }
 }
 
 void    VID_Update (vrect_t *rects)
@@ -176,12 +324,12 @@ void    VID_Update (vrect_t *rects)
         sdlrects[i].y = rect->y;
         sdlrects[i].w = rect->width;
         sdlrects[i].h = rect->height;
+        SDL_BlitSurface( buffer, &sdlrects[i], screen, &sdlrects[i] );
         ++i;
     }
 
     D_DrawUIOverlay();
-    SDL_UpdateRects(screen, n, sdlrects);
-
+    SDL_UpdateRect( screen, 0, 0, 0, 0 );
 }
 
 /*
@@ -195,14 +343,15 @@ void D_BeginDirectRect (int x, int y, byte *pbitmap, int width, int height)
 
 
     if (!screen) return;
-    if ( x < 0 ) x = screen->w+x-1;
-    offset = (Uint8 *)screen->pixels + y*screen->pitch + x;
+    if ( x < 0 ) x = buffer->w+x-1;
+    offset = (Uint8 *)buffer->pixels + y*buffer->pitch + x;
     while ( height-- )
     {
         memcpy(offset, pbitmap, width);
         offset += screen->pitch;
         pbitmap += width;
     }
+
 }
 
 
@@ -213,12 +362,17 @@ D_EndDirectRect
 */
 void D_EndDirectRect (int x, int y, int width, int height)
 {
+    SDL_Rect update;
     if (!screen) return;
     if (x < 0) x = screen->w+x-1;
 
+    update.x = x;
+    update.y = y;
+    update.w = width;
+    update.h = height;
+    SDL_BlitSurface( buffer, &update, screen, &update );
     D_DrawUIOverlay();
-    SDL_UpdateRect(screen, x, y, width, height);
-
+    SDL_UpdateRect( screen, 0, 0, 0, 0 );
 }
 
 
@@ -433,8 +587,16 @@ void Sys_SendKeyEvents(void)
                 Key_Event(sym, state);
                 break;
 
-            case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP:
+                if ( event.motion.y > vid.height - JOY_SIZE &&
+                     event.motion.x < JOY_SIZE )
+                {
+                    joy_x = joy_y = 0;
+                    mousedown = false;
+                }
+
+                //fall through
+            case SDL_MOUSEBUTTONDOWN:
                 
                 if ( event.motion.x > vid.width - FIRE_SIZE &&
                         event.motion.y > vid.height - FIRE_SIZE )
@@ -469,10 +631,24 @@ void Sys_SendKeyEvents(void)
                         }
                     }
 
-                    joy_x *= 3;
-
-                    //printf( "%f, %f, %f\n", vid.height, event.motion.y, JOY_SIZE );
-                    joy_y = -( (float)vid.height - event.motion.y - JOY_Y )*2;
+                    joy_y = -( JOY_Y - event.motion.y );
+                    
+                    joy_y = ( event.motion.y - JOY_Y );
+                    if ( joy_y < JOY_DEAD && joy_y > -JOY_DEAD )
+                    {
+                        joy_y = 0;
+                    }
+                    else
+                    {
+                        if ( joy_y >= JOY_DEAD )
+                        {
+                            joy_y -= JOY_DEAD;
+                        }
+                        else
+                        {
+                            joy_y += JOY_DEAD;
+                        }
+                    }
                     break;
                 }
 
@@ -486,6 +662,7 @@ void Sys_SendKeyEvents(void)
                 if ( event.motion.y < JUMP_SIZE )
                 {
                     //top-left corner, jump!
+                    jumping_counter = JUMP_FRAME_COUNT;
                     Key_Event( 32, true );
                     Key_Event( 32, false );
                     break;
@@ -551,14 +728,7 @@ void IN_Commands (void)
     }
 
     Key_Event( K_MOUSE1, autofire );
-    //for (i=0 ; i<3 ; i++) {
-    //    if ( (mouse_buttonstate & (1<<i)) && !(mouse_oldbuttonstate & (1<<i)) )
-    //        Key_Event (K_MOUSE1 + i, true);
 
-    //    if ( !(mouse_buttonstate & (1<<i)) && (mouse_oldbuttonstate & (1<<i)) )
-    //        Key_Event (K_MOUSE1 + i, false);
-    //}
-    //mouse_oldbuttonstate = mouse_buttonstate;
 }
 
 void IN_Move (usercmd_t *cmd)
@@ -566,9 +736,9 @@ void IN_Move (usercmd_t *cmd)
     if (!mouse_avail)
         return;
 
-    mouse_x = joy_x * sensitivity.value;
-    mouse_y = joy_y * sensitivity.value;
-   
+    mouse_x = joy_x * sensitivity.value * 3;
+    mouse_y = joy_y * sensitivity.value * 2;
+
     //if ( (in_strafe.state & 1) || (lookstrafe.value && (in_mlook.state & 1) ))
     if( gesturedown )
         cmd->sidemove += m_side.value * mouse_x;
