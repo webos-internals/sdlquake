@@ -221,6 +221,8 @@ void Draw_Character (int x, int y, int num)
 			pusdest += (vid.conrowbytes >> 1);
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 /*
@@ -236,6 +238,8 @@ void Draw_String (int x, int y, char *str)
 		str++;
 		x += 8;
 	}
+
+    D_DrawUIOverlay();
 }
 
 /*
@@ -279,6 +283,8 @@ void Draw_DebugChar (char num)
 		source += 128;
 		dest += 320;
 	}
+
+    D_DrawUIOverlay();
 }
 
 /*
@@ -329,6 +335,8 @@ void Draw_Pic (int x, int y, qpic_t *pic)
 			source += pic->width;
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -416,6 +424,8 @@ void Draw_TransPic (int x, int y, qpic_t *pic)
 			source += pic->width;
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -503,6 +513,8 @@ void Draw_TransPicTranslate (int x, int y, qpic_t *pic, byte *translation)
 			source += pic->width;
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -528,6 +540,7 @@ void Draw_CharToConback (int num, byte *dest)
 		dest += 320;
 	}
 
+    D_DrawUIOverlay();
 }
 
 /*
@@ -619,6 +632,8 @@ void Draw_ConsoleBackground (int lines)
 			}
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -668,6 +683,8 @@ void R_DrawRect8 (vrect_t *prect, int rowbytes, byte *psrc,
 			pdest += vid.rowbytes;
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -726,6 +743,8 @@ void R_DrawRect16 (vrect_t *prect, int rowbytes, byte *psrc,
 			pdest += destdelta;
 		}
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -799,6 +818,8 @@ void Draw_TileClear (int x, int y, int w, int h)
 		height -= vr.height;
 		tileoffsety = 0;		// only the top tile can be top-clipped
 	}
+
+    D_DrawUIOverlay();
 }
 
 
@@ -832,6 +853,8 @@ void Draw_Fill (int x, int y, int w, int h, int c)
 			for (u=0 ; u<w ; u++)
 				pusdest[u] = uc;
 	}
+
+    D_DrawUIOverlay();
 }
 //=============================================================================
 
@@ -867,6 +890,8 @@ void Draw_FadeScreen (void)
 	VID_UnlockBuffer ();
 	S_ExtraUpdate ();
 	VID_LockBuffer ();
+
+    D_DrawUIOverlay();
 }
 
 //=============================================================================

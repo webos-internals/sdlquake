@@ -90,6 +90,7 @@ void    VID_Init (unsigned char *palette)
     if ( COM_CheckParm ("-fullscreen") )
         flags |= SDL_FULLSCREEN;
 
+
     // Initialize display 
     if (!(screen = SDL_SetVideoMode(vid.width, vid.height, 8, flags)))
         Sys_Error("VID: Couldn't set video mode: %s\n", SDL_GetError());
@@ -130,9 +131,26 @@ void    VID_Shutdown (void)
     SDL_Quit();
 }
 
-void drawUIOverlay()
+void D_DrawUIOverlay()
 {
     //XXX: draw overlay here as appropriate
+
+    int overlay_x = 0;
+    int overlay_y = 160;
+    int i;
+
+    Uint8 *row = screen->pixels + overlay_y*screen->pitch + overlay_x;
+    Uint8 *offset;
+    for ( i = 0; i < 159; i++ )
+    {
+        for ( offset = row; offset < row + 160; offset+=2 )
+        {
+            *offset = 0;
+        }
+        row += screen->pitch;
+    }
+
+    //SDL_UpdateRect(screen, overlay_x, overlay_y, 160, 160);
 }
 
 void    VID_Update (vrect_t *rects)
@@ -161,9 +179,9 @@ void    VID_Update (vrect_t *rects)
         ++i;
     }
 
-    drawUIOverlay();
-
+    D_DrawUIOverlay();
     SDL_UpdateRects(screen, n, sdlrects);
+
 }
 
 /*
@@ -198,9 +216,9 @@ void D_EndDirectRect (int x, int y, int width, int height)
     if (!screen) return;
     if (x < 0) x = screen->w+x-1;
 
-    drawUIOverlay();
-
+    D_DrawUIOverlay();
     SDL_UpdateRect(screen, x, y, width, height);
+
 }
 
 
