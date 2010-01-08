@@ -30,6 +30,7 @@ unsigned short  d_8to16table[256];
 byte    autofire = 0;
 byte    mousedown = 0;
 byte    normalkeyboard = 0;
+byte    drawoverlay = 1;
 byte    gesturedown = 0;
 extern int in_impulse;
 
@@ -217,6 +218,11 @@ void D_DrawOverlayBacking( SDL_Rect rects[OVERLAY_ITEM_COUNT] )
 
 void D_DrawUIOverlay()
 {
+    if ( !drawoverlay )
+    {
+        return;
+    }
+
     // Render the overlay!
     // This is done in two stages:
     // Calculate the rects where everything goes,
@@ -547,6 +553,19 @@ void Sys_SendKeyEvents(void)
                     if ( sym == SDLK_s ) sym = K_UPARROW;
                     if ( sym == SDLK_z ) sym = K_RIGHTARROW;
                     if ( sym == SDLK_a ) sym = K_DOWNARROW;
+
+                    if ( sym == SDLK_0 && state )
+                    {
+                        drawoverlay = !drawoverlay;
+                        if ( drawoverlay )
+                        {
+                            Con_Printf( "Overlay enabled. Press orange+'@' (0) to toggle back.\n" );
+                        }
+                        else
+                        {
+                            Con_Printf( "Overlay disabled. Press orange+'@' (0) to toggle back.\n" );
+                        }
+                    }
                 }
 
                 //Weapon cycling!
