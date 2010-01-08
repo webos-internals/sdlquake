@@ -737,7 +737,7 @@ void IN_Move (usercmd_t *cmd)
     if (!mouse_avail)
         return;
 
-    mouse_x = joy_x * sensitivity.value * 3;
+    mouse_x = joy_x * sensitivity.value * 2.5;
     mouse_y = joy_y * sensitivity.value * 2.5;
 
     //if ( (in_strafe.state & 1) || (lookstrafe.value && (in_mlook.state & 1) ))
