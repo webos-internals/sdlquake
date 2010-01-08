@@ -38,6 +38,9 @@ extern int in_impulse;
 int     jumping_counter = 0;
 #define JUMP_FRAME_COUNT 6
 
+int     fire_counter = 0;
+#define FIRE_FRAME_COUNT 1
+
 int    VGA_width, VGA_height, VGA_rowbytes, VGA_bufferrowbytes = 0;
 byte    *VGA_pagebase;
 
@@ -303,8 +306,9 @@ void D_DrawUIOverlay()
         SDL_BlitSurface( jump_img, NULL, screen, &rect[3] );
     }
 
-    if ( autofire )
+    if ( fire_counter > 0 )
     {
+        fire_counter--;
         SDL_BlitSurface( fire_img, NULL, screen, &rect[4] );
     }
 }
@@ -625,6 +629,10 @@ void Sys_SendKeyEvents(void)
                     //FIRE!
                     Key_Event( K_MOUSE1, event.button.state );
                     autofire = event.button.state;
+                    if ( autofire )
+                    {
+                        fire_counter = FIRE_FRAME_COUNT;
+                    }
                     fire_x = event.motion.x;
                     fire_y = event.motion.y;
                     break;
