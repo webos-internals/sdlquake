@@ -20,11 +20,10 @@ unsigned short  d_8to16table[256];
 
 #define    JOY_IMAGE_FILENAME        "images/joystick.png"
 #define    JOY_PRESS_IMAGE_FILENAME  "images/joystick-press.png"
-#define    JOY_CENTER_IMAGE_FILENAME "images/joystick-center.png"
 #define    JUMP_IMAGE_FILENAME       "images/jump.png"
 #define    FIRE_IMAGE_FILENAME       "images/fire.png"
 
-#define    OVERLAY_ITEM_COUNT   5
+#define    OVERLAY_ITEM_COUNT   4
 #define    OVERLAY_ALPHA       32
 
 byte    autofire = 0;
@@ -61,7 +60,6 @@ SDL_Surface * IMG_Load( char * filename );
 
 static SDL_Surface * joy_img = NULL;
 static SDL_Surface * joy_press_img = NULL;
-static SDL_Surface * joy_center_img = NULL;
 static SDL_Surface * jump_img = NULL;
 static SDL_Surface * fire_img = NULL;
 
@@ -185,7 +183,6 @@ void    VID_Init (unsigned char *palette)
     // Load the overlay images
     joy_img = LoadImage( JOY_IMAGE_FILENAME );
     joy_press_img = LoadImage( JOY_PRESS_IMAGE_FILENAME );
-    joy_center_img = LoadImage( JOY_CENTER_IMAGE_FILENAME );
     jump_img = LoadImage( JUMP_IMAGE_FILENAME );
     fire_img = LoadImage( FIRE_IMAGE_FILENAME );
     memset( old_rects, 0, sizeof( old_rects ) );
@@ -242,43 +239,38 @@ void D_DrawUIOverlay()
     rect[0].w = joy_img->w;
     rect[0].h = joy_img->h;
 
-    //Now draw the center of the joystick
-    rect[1].x = JOY_X - joy_center_img->w/2;
-    rect[1].y = JOY_Y - joy_center_img->h/2;
-    rect[1].w = joy_center_img->w;
-    rect[1].h = joy_center_img->h;
 
     //If user has moved the joystick...
-    rect[2].x = JOY_X + joy_x - joy_press_img->w/2;
-    rect[2].y = JOY_Y + joy_y - joy_press_img->h/2;
-    rect[2].w = joy_press_img->w;
-    rect[2].h = joy_press_img->h;
+    rect[1].x = JOY_X + joy_x - joy_press_img->w/2;
+    rect[1].y = JOY_Y + joy_y - joy_press_img->h/2;
+    rect[1].w = joy_press_img->w;
+    rect[1].h = joy_press_img->h;
 
     //Adjust x/y so the full image is on the screen
     int max_x = vid.width - joy_press_img->w -1;
     int max_y = vid.height - joy_press_img->h -1;
 
-    if ( rect[2].x > max_x )
+    if ( rect[1].x > max_x )
     {
-        rect[2].x = max_x;
+        rect[1].x = max_x;
     }
-    if ( rect[2].y > max_y )
+    if ( rect[1].y > max_y )
     {
-        rect[2].y = max_y;
+        rect[1].y = max_y;
     }
 
 
     //Draw the jump button if the user hit it
-    rect[3].x = vid.width/2 - jump_img->w/2;
-    rect[3].y = 10;
-    rect[3].w = jump_img->w;
-    rect[3].h = jump_img->h;
+    rect[2].x = vid.width/2 - jump_img->w/2;
+    rect[2].y = 10;
+    rect[2].w = jump_img->w;
+    rect[2].h = jump_img->h;
 
     //Draw the fire button if the user is hitting it
-    rect[4].x = fire_x - fire_img->w/2;
-    rect[4].y = fire_y - fire_img->h/2;
-    rect[4].w = fire_img->w;
-    rect[4].h = fire_img->h;
+    rect[3].x = fire_x - fire_img->w/2;
+    rect[3].y = fire_y - fire_img->h/2;
+    rect[3].w = fire_img->w;
+    rect[3].h = fire_img->h;
 
     //Now render the overlay
 
@@ -286,30 +278,23 @@ void D_DrawUIOverlay()
     //and b)the pieces we're drawing on top of are up-to-date
     D_DrawOverlayBacking( rect );
 
-    char joydown =  ( joy_x != 0 || joy_y != 0 );
-    
-    if ( joydown )
-    {
-        SDL_BlitSurface( joy_center_img, NULL, screen, &rect[1] );
-    }
-
     SDL_BlitSurface( joy_img, NULL, screen, &rect[0] );
 
-    if ( joydown )
-    {
-        SDL_BlitSurface( joy_press_img, NULL, screen, &rect[2] );
-    }
+    SDL_BlitSurface( joy_press_img, NULL, screen, &rect[1] );
 
     if ( jumping_counter > 0 )
     {
         jumping_counter--;
-        SDL_BlitSurface( jump_img, NULL, screen, &rect[3] );
+        SDL_BlitSurface( jump_img, NULL, screen, &rect[2] );
     }
 
-    if ( fire_counter > 0 )
+    if ( autofire || fire_counter > 0 )
     {
-        fire_counter--;
-        SDL_BlitSurface( fire_img, NULL, screen, &rect[4] );
+        if ( fire_counter > 0 )
+        {
+            fire_counter--;
+        }
+        SDL_BlitSurface( fire_img, NULL, screen, &rect[3] );
     }
 }
 
