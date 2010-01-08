@@ -22,9 +22,10 @@ unsigned short  d_8to16table[256];
 #define    JOY_PRESS_IMAGE_FILENAME  "images/joystick-press.png"
 #define    JOY_CENTER_IMAGE_FILENAME "images/joystick-center.png"
 #define    JUMP_IMAGE_FILENAME       "images/jump.png"
-#define    FIRE_IMAGE_FILENAME       "images/joystick-center.png" //"fire.png"
+#define    FIRE_IMAGE_FILENAME       "images/joystick-press.png" //"fire.png"
 
 #define    OVERLAY_ITEM_COUNT   5
+#define    OVERLAY_ALPHA       32
 
 byte    autofire = 0;
 byte    mousedown = 0;
@@ -89,16 +90,9 @@ SDL_Surface * LoadImage( char * image )
     {
         Sys_Error( "Error loading image %s: %s\n", image, SDL_GetError() );
     }
-    SDL_Surface * imgWithAlpha = SDL_DisplayFormatAlpha( img );
-    SDL_FreeSurface( img );
-    if ( !imgWithAlpha )
-    {
-        Sys_Error( "Error converting to format alpha: %s\n", SDL_GetError() );
-    }
 
-    //SDL_SetAlpha( img, 0, 0 );
-
-    return imgWithAlpha;
+    SDL_SetAlpha( img, SDL_SRCALPHA, OVERLAY_ALPHA );
+    return img;
 }
 
 void    VID_Init (unsigned char *palette)
@@ -136,18 +130,18 @@ void    VID_Init (unsigned char *palette)
 
 
     // Initialize display 
-    if (!(screen = SDL_SetVideoMode(vid.width, vid.height, 8, flags)))
+    if (!(screen = SDL_SetVideoMode(vid.width, vid.height, 32, flags)))
         Sys_Error("VID: Couldn't set video mode: %s\n", SDL_GetError());
 
     //create buffer where we do the rendering
     buffer = SDL_CreateRGBSurface(SDL_SWSURFACE,
             screen->w,
             screen->h,
-            screen->format->BitsPerPixel,
-            screen->format->Rmask,
-            screen->format->Gmask,
-            screen->format->Bmask,
-            screen->format->Amask);
+            8, //screen->format->BitsPerPixel,
+            0,
+            0,
+            0,
+            0);
     if ( !buffer )
     {
         Sys_Error( "VID: Couldn't create buffer: %s\n", SDL_GetError() );
@@ -219,6 +213,7 @@ void D_DrawOverlayBacking( SDL_Rect rects[OVERLAY_ITEM_COUNT] )
     memcpy( old_rects, rects, sizeof( old_rects ) );
 }
 
+
 void D_DrawUIOverlay()
 {
     // Render the overlay!
@@ -281,11 +276,17 @@ void D_DrawUIOverlay()
     //and b)the pieces we're drawing on top of are up-to-date
     D_DrawOverlayBacking( rect );
 
-    SDL_BlitSurface( joy_img, NULL, screen, &rect[0] );
-
-    if ( joy_x != 0 || joy_y != 0 )
+    char joydown =  ( joy_x != 0 || joy_y != 0 );
+    
+    if ( joydown )
     {
         SDL_BlitSurface( joy_center_img, NULL, screen, &rect[1] );
+    }
+
+    SDL_BlitSurface( joy_img, NULL, screen, &rect[0] );
+
+    if ( joydown )
+    {
         SDL_BlitSurface( joy_press_img, NULL, screen, &rect[2] );
     }
 
@@ -737,7 +738,7 @@ void IN_Move (usercmd_t *cmd)
         return;
 
     mouse_x = joy_x * sensitivity.value * 3;
-    mouse_y = joy_y * sensitivity.value * 2;
+    mouse_y = joy_y * sensitivity.value * 2.5;
 
     //if ( (in_strafe.state & 1) || (lookstrafe.value && (in_mlook.state & 1) ))
     if( gesturedown )
