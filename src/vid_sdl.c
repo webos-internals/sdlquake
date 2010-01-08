@@ -22,7 +22,7 @@ unsigned short  d_8to16table[256];
 #define    JOY_PRESS_IMAGE_FILENAME  "images/joystick-press.png"
 #define    JOY_CENTER_IMAGE_FILENAME "images/joystick-center.png"
 #define    JUMP_IMAGE_FILENAME       "images/jump.png"
-#define    FIRE_IMAGE_FILENAME       "images/joystick-press.png" //"fire.png"
+#define    FIRE_IMAGE_FILENAME       "images/fire.png"
 
 #define    OVERLAY_ITEM_COUNT   5
 #define    OVERLAY_ALPHA       32
@@ -46,6 +46,7 @@ static SDL_Surface *screen = NULL;
 static qboolean mouse_avail;
 static float   mouse_x, mouse_y;
 static float   joy_x, joy_y;
+static float   fire_x, fire_y;
 
 // No support for option menus
 void (*vid_menudrawfn)(void) = NULL;
@@ -265,8 +266,8 @@ void D_DrawUIOverlay()
     rect[3].h = jump_img->h;
 
     //Draw the fire button if the user is hitting it
-    rect[4].x = vid.width - FIRE_SIZE/2 - fire_img->w/2;
-    rect[4].y = vid.height - FIRE_SIZE/2 - fire_img->h/2;
+    rect[4].x = fire_x - fire_img->w/2;
+    rect[4].y = fire_y - fire_img->h/2;
     rect[4].w = fire_img->w;
     rect[4].h = fire_img->h;
 
@@ -605,6 +606,8 @@ void Sys_SendKeyEvents(void)
                     //FIRE!
                     Key_Event( K_MOUSE1, event.button.state );
                     autofire = event.button.state;
+                    fire_x = event.motion.x;
+                    fire_y = event.motion.y;
                     break;
                 }
                 break;
@@ -669,20 +672,14 @@ void Sys_SendKeyEvents(void)
                     break;
                 }
 
-                //wasn't a special area, do mouse-look
-
-                //threshold sudden movements, and only use relative movement while finger down
-                //if ( mousedown &&
-                //        event.motion.xrel < 100 && event.motion.xrel > -100 && event.motion.yrel < 100 && event.motion.yrel > -100 ) {
-                //    mouse_x = event.motion.xrel*20;
-
-                //    //Mouse y--moves forward/back not look
-                //    //cl.viewangles[PITCH] += m_pitch.value * event.motion.yrel * 10;
-                //    //if (cl.viewangles[PITCH] > 80)
-                //    //    cl.viewangles[PITCH] = 80;
-                //    //if (cl.viewangles[PITCH] < -70)
-                //    //    cl.viewangles[PITCH] = -70;
-                //}
+                //If it's in the fire zone, update x/y
+                if ( event.motion.x > vid.width - FIRE_SIZE &&
+                        event.motion.y > vid.height - FIRE_SIZE )
+                {
+                    fire_x = event.motion.x;
+                    fire_y = event.motion.y;
+                    break;
+                }
 
                 break;
 
