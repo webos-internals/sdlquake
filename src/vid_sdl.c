@@ -49,7 +49,6 @@ static SDL_Surface *screen = NULL;
 static qboolean mouse_avail;
 static float   mouse_x, mouse_y;
 static float   joy_x, joy_y;
-static float   fire_x, fire_y;
 
 // No support for option menus
 void (*vid_menudrawfn)(void) = NULL;
@@ -185,6 +184,7 @@ void    VID_Init (unsigned char *palette)
     joy_press_img = LoadImage( JOY_PRESS_IMAGE_FILENAME );
     jump_img = LoadImage( JUMP_IMAGE_FILENAME );
     fire_img = LoadImage( FIRE_IMAGE_FILENAME );
+
     memset( old_rects, 0, sizeof( old_rects ) );
 }
 
@@ -218,11 +218,6 @@ void D_DrawOverlayBacking( SDL_Rect rects[OVERLAY_ITEM_COUNT] )
 
 void D_DrawUIOverlay()
 {
-    if ( !drawoverlay )
-    {
-        return;
-    }
-
     // Render the overlay!
     // This is done in two stages:
     // Calculate the rects where everything goes,
@@ -267,8 +262,8 @@ void D_DrawUIOverlay()
     rect[2].h = jump_img->h;
 
     //Draw the fire button if the user is hitting it
-    rect[3].x = fire_x - fire_img->w/2;
-    rect[3].y = fire_y - fire_img->h/2;
+    rect[3].x = vid.width - FIRE_SIZE/2 - fire_img->w/2;
+    rect[3].y = vid.height - FIRE_SIZE/2 - fire_img->h/2;
     rect[3].w = fire_img->w;
     rect[3].h = fire_img->h;
 
@@ -277,6 +272,11 @@ void D_DrawUIOverlay()
     //First make sure we a)get rid of the old overlay on the screen buffer
     //and b)the pieces we're drawing on top of are up-to-date
     D_DrawOverlayBacking( rect );
+
+    if ( !drawoverlay )
+    {
+        return;
+    }
 
     SDL_BlitSurface( joy_img, NULL, screen, &rect[0] );
 
@@ -288,14 +288,8 @@ void D_DrawUIOverlay()
         SDL_BlitSurface( jump_img, NULL, screen, &rect[2] );
     }
 
-    if ( autofire || fire_counter > 0 )
-    {
-        if ( fire_counter > 0 )
-        {
-            fire_counter--;
-        }
-        SDL_BlitSurface( fire_img, NULL, screen, &rect[3] );
-    }
+    SDL_BlitSurface( fire_img, NULL, screen, &rect[3] );
+
 }
 
 void    VID_Update (vrect_t *rects)
@@ -618,8 +612,6 @@ void Sys_SendKeyEvents(void)
                     {
                         fire_counter = FIRE_FRAME_COUNT;
                     }
-                    fire_x = event.motion.x;
-                    fire_y = event.motion.y;
                     break;
                 }
                 break;
@@ -683,16 +675,6 @@ void Sys_SendKeyEvents(void)
                     Key_Event( 32, false );
                     break;
                 }
-
-                //If it's in the fire zone, update x/y
-                if ( event.motion.x > vid.width - FIRE_SIZE &&
-                        event.motion.y > vid.height - FIRE_SIZE )
-                {
-                    fire_x = event.motion.x;
-                    fire_y = event.motion.y;
-                    break;
-                }
-
                 break;
 
             case SDL_QUIT:
