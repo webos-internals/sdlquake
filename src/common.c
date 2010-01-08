@@ -1767,18 +1767,22 @@ void COM_InitFilesystem (void)
 // Overrides the system supplied cache directory (NULL or /qcache)
 // -cachedir - will disable caching.
 //
-	i = COM_CheckParm ("-cachedir");
-	if (i && i < com_argc-1)
-	{
-		if (com_argv[i+1][0] == '-')
-			com_cachedir[0] = 0;
-		else
-			strcpy (com_cachedir, com_argv[i+1]);
-	}
-	else if (host_parms.cachedir)
-		strcpy (com_cachedir, host_parms.cachedir);
-	else
-		com_cachedir[0] = 0;
+//	i = COM_CheckParm ("-cachedir");
+//	if (i && i < com_argc-1)
+//	{
+//		if (com_argv[i+1][0] == '-')
+//			com_cachedir[0] = 0;
+//		else
+//			strcpy (com_cachedir, com_argv[i+1]);
+//	}
+//	else if (host_parms.cachedir)
+//		strcpy (com_cachedir, host_parms.cachedir);
+//	else
+//		com_cachedir[0] = 0;
+
+    //I haven't sorted out /why/, but cachedir breaks settings load.
+    //Don't think cacheing gets us anything anyway since we're not a server
+    com_cachedir[0] = 0;
 
 //
 // start up with GAMENAME by default (id1)
