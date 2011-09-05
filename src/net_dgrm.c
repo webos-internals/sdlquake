@@ -1258,6 +1258,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 		SZ_Clear(&net_message);
 		do
 		{
+			memset(&readaddr, 0, sizeof(readaddr));
 			ret = dfunc.Read (newsock, net_message.data, net_message.maxsize, &readaddr);
 			// if we got something, validate it
 			if (ret > 0)

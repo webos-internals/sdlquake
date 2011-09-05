@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #ifdef __sun__
 #include <sys/filio.h>
@@ -62,8 +63,6 @@ int UDP_Init (void)
 	
 	if (COM_CheckParm ("-noudp"))
 		return -1;
-    //Disable net
-    return -1;
 
 	// determine my name & address
 	gethostname(buff, MAXHOSTNAMELEN);
@@ -136,10 +135,9 @@ int UDP_OpenSocket (int port)
 	if ((newsocket = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
 		return -1;
 
-#if 0
-	if (ioctl (newsocket, FIONBIO, (char *)&_true) == -1)
-		goto ErrorReturn;
-#endif
+  if (fcntl(newsocket, F_SETFL, O_NONBLOCK) == -1)
+    goto ErrorReturn;
+
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(port);
@@ -369,6 +367,7 @@ int UDP_GetNameFromAddr (struct qsockaddr *addr, char *name)
 int UDP_GetAddrFromName(char *name, struct qsockaddr *addr)
 {
 	struct hostent *hostentry;
+	memset(addr, 0, sizeof(struct qsockaddr));
 
 	if (name[0] >= '0' && name[0] <= '9')
 		return PartialIPAddress (name, addr);

@@ -3,6 +3,7 @@
 #include "SDL.h"
 #include "quakedef.h"
 #include "d_local.h"
+#include "pdl.h"
 
 viddef_t    vid;                // global video state
 unsigned short  d_8to16table[256];
@@ -134,6 +135,13 @@ void    VID_Init (unsigned char *palette)
     // Initialize display 
     if (!(screen = SDL_SetVideoMode(vid.width, vid.height, 32, flags)))
         Sys_Error("VID: Couldn't set video mode: %s\n", SDL_GetError());
+
+    //Initialize PDL and set orientation
+    //if ( PDL_Init( 0 ) != PDL_NOERROR )
+    //    Sys_Error( "Failed to initialize PDL!\n" );
+    if ( PDL_SetOrientation( PDL_ORIENTATION_LEFT != PDL_NOERROR ) )
+        Sys_Error( "Failed to set orientation!\n" );
+    PDL_CustomPauseUiEnable( PDL_FALSE );
 
     //create buffer where we do the rendering
     buffer = SDL_CreateRGBSurface(SDL_SWSURFACE,
