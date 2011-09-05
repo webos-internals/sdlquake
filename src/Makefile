@@ -114,7 +114,7 @@ PROGRAMS =  $(bin_PROGRAMS)
 
 DEFS =  -DPACKAGE=\"sdlquake\" -DVERSION=\"1.0.9\"  -I. -I$(srcdir) 
 CPPFLAGS = 
-LDFLAGS = 
+LDFLAGS = -Wl,--allow-shlib-undefined
 LIBS =  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread
 sdlquake_OBJECTS =  cd_sdl.o chase.o cl_demo.o cl_input.o cl_main.o \
 cl_parse.o cl_tent.o cmd.o common.o console.o crc.o cvar.o \
@@ -131,10 +131,12 @@ d_draw16.o d_polysa.o d_scana.o d_spr8.o d_varsa.o math.o \
 r_aclipa.o r_aliasa.o r_drawa.o r_edgea.o surf16.o surf8.o worlda.o \
 d_vars.o nonintel.o
 sdlquake_DEPENDENCIES = 
-sdlquake_LDFLAGS =  -Wl,-rpath,/usr/local/lib -L/usr/local/lib -lSDL_image
-CFLAGS = -I/usr/local/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT -DSDL -DELF \
+sdlquake_LDFLAGS =  -Wl,-rpath,/usr/local/lib -L/usr/local/lib -lSDL_image -lpdl
+OPTS = \
 		 -O2 -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp \
 		 -ffast-math -fsingle-precision-constant -funroll-loops
+#OPTS = -g
+CFLAGS = -I/usr/local/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT -DSDL -DELF $(OPTS)
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
